@@ -1,0 +1,74 @@
+pip install gym
+import gym
+import numpy as np
+import random
+
+# Create FrozenLake environment
+env = gym.make('FrozenLake-v1', is_slippery=True)
+
+# Initialize Q-table with zeros
+state_size = env.observation_space.n
+action_size = env.action_space.n
+q_table = np.zeros((state_size, action_size))
+
+# Hyperparameters
+learning_rate = 0.8
+discount_rate = 0.95
+episodes = 10000
+max_steps = 100
+exploration_rate = 1.0
+max_exploration_rate = 1.0
+min_exploration_rate = 0.01
+exploration_decay_rate = 0.001
+
+# Training the agent
+for episode in range(episodes):
+    state = env.reset()
+    done = False
+    for step in range(max_steps):
+        # Exploration-exploitation trade-off
+        if random.uniform(0, 1) < exploration_rate:
+            action = env.action_space.sample()  # Explore
+        else:
+            action = np.argmax(q_table[state, :])  # Exploit learned values
+
+        # Take action and observe the outcome
+        new_state, reward, done, _ = env.step(action)
+
+        # Update Q-table
+        q_table[state, action] = q_table[state, action] + learning_rate * (
+            reward + discount_rate * np.max(q_table[new_state, :]) - q_table[state, action])
+
+        # Transition to the new state
+        state = new_state
+
+        # If done (reached goal or fell into a hole), end the episode
+        if done:
+            break
+
+    # Decay exploration rate
+    exploration_rate = min_exploration_rate + (max_exploration_rate - min_exploration_rate) * np.exp(
+        -exploration_decay_rate * episode)
+
+# Evaluate the agent
+total_rewards = 0
+evaluation_episodes = 100
+for episode in range(evaluation_episodes):
+    state = env.reset()
+    done = False
+    episode_reward = 0
+    for step in range(max_steps):
+        action = np.argmax(q_table[state, :])  # Exploit learned values
+        new_state, reward, done, _ = env.step(action)
+        episode_reward += reward
+        state = new_state
+        if done:
+            break
+    total_rewards += episode_reward
+
+# Print the average reward over the evaluation episodes
+average_reward = total_rewards / evaluation_episodes
+print(f"Average reward over {evaluation_episodes} episodes: {average_reward:.2f}")
+
+# Close the environment
+env.close()
